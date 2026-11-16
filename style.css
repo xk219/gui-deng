@@ -1,0 +1,91 @@
+:root{
+  --ink:#070d18;
+  --ink-2:#0d1626;
+  --paper:#f4ead6;
+  --amber:#ffcf6b;
+  --amber-deep:#e8a33d;
+  --frost:#9fc4e8;
+  --shadow:#0a0f1a;
+  --line:rgba(255,207,107,.22);
+  --text:#e9eef7;
+  --muted:#93a3bb;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  color:var(--text);
+  background:
+    radial-gradient(1200px 700px at 50% -10%, #12203a 0%, #070d18 60%, #04070e 100%);
+  overflow-x:hidden;
+}
+.app{min-height:100%;display:flex;flex-direction:column;align-items:center;gap:14px;padding:18px 16px 10px}
+
+/* ---------- 顶栏 ---------- */
+.topbar{width:100%;max-width:1060px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:42px;height:42px;border-radius:50%;background:radial-gradient(circle at 50% 60%,#fff3cf,#ffcf6b 40%,rgba(255,207,107,0) 72%);position:relative;filter:drop-shadow(0 0 12px rgba(255,207,107,.55))}
+.logo .flame{position:absolute;inset:12px;border-radius:50% 50% 50% 50%/60% 60% 40% 40%;background:#fff8e2}
+.brand-text h1{margin:0;font-size:20px;letter-spacing:.16em;font-weight:600}
+.brand-text p{margin:2px 0 0;font-size:12px;color:var(--muted);letter-spacing:.08em}
+
+.hud{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.hud[hidden]{display:none}
+.pill{display:flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid var(--line);border-radius:999px;background:rgba(13,22,38,.72);font-size:13px;color:var(--muted)}
+.pill strong{color:var(--text);font-size:16px;font-variant-numeric:tabular-nums}
+.pill .unit{font-size:12px;color:var(--muted)}
+.pill .dot{width:8px;height:8px;border-radius:50%;background:var(--amber);box-shadow:0 0 10px var(--amber)}
+.pill.carry.danger{border-color:rgba(255,120,120,.55);color:#ffb4a8}
+.pill.carry.danger .dot{background:#ff7a6b;box-shadow:0 0 12px #ff7a6b}
+.sockets{display:flex;gap:4px}
+.sockets i{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.12);display:block}
+.sockets i.on{background:var(--amber);box-shadow:0 0 8px var(--amber)}
+
+.btn{font:inherit;cursor:pointer;border-radius:999px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:var(--text);padding:9px 18px;transition:.18s}
+.btn:hover{background:rgba(255,255,255,.12)}
+.btn.ghost{font-size:12px;padding:7px 14px;color:var(--muted)}
+.btn.primary{
+  background:linear-gradient(180deg,#ffd98a,#e8a33d);color:#231404;border:none;font-weight:600;
+  padding:12px 34px;box-shadow:0 8px 26px rgba(232,163,61,.35);letter-spacing:.08em}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.wide{width:100%;margin-top:8px}
+
+/* ---------- 舞台 ---------- */
+.stage{position:relative;width:100%;max-width:1060px;border-radius:18px;overflow:hidden;border:1px solid rgba(255,255,255,.08);background:#05080f;box-shadow:0 24px 70px rgba(0,0,0,.55)}
+canvas{display:block;width:100%;height:auto;touch-action:none}
+.foot{width:100%;max-width:1060px;display:flex;justify-content:space-between;color:#5a6b85;font-size:11px;letter-spacing:.06em;padding:2px 4px 12px}
+
+/* ---------- 遮罩 ---------- */
+.overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;padding:20px;background:radial-gradient(900px 520px at 50% 40%,rgba(10,18,32,.86),rgba(3,6,12,.95))}
+.overlay.show{display:flex}
+.panel{width:min(560px,100%);max-height:100%;overflow:auto;padding:30px 32px;border-radius:16px;border:1px solid rgba(255,207,107,.2);background:linear-gradient(180deg,rgba(17,28,46,.96),rgba(8,13,24,.98));box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.panel.small{width:min(360px,100%);text-align:center}
+.kicker{margin:0 0 6px;font-size:12px;letter-spacing:.28em;color:var(--amber);text-transform:uppercase}
+.panel h2{margin:0 0 10px;font-size:23px;line-height:1.35;font-weight:600}
+.lead{margin:0 0 18px;color:#c2cee0;font-size:14px;line-height:1.7}
+.rules{display:flex;flex-direction:column;gap:10px;margin:6px 0 18px}
+.rule{display:flex;gap:12px;padding:11px 14px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);font-size:13.5px;line-height:1.65;color:#cfd8e6}
+.rule b{color:#fff}
+.rule .num{flex:0 0 22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;color:#231404;background:var(--amber);font-weight:700}
+.hint{padding:12px 14px;border-left:2px solid var(--amber);background:rgba(255,207,107,.06);border-radius:0 10px 10px 0;margin-bottom:18px}
+.hint p{margin:0 0 6px;font-size:13px;line-height:1.7;color:#d7dfec}
+.hint .keys{margin:0;color:var(--muted);font-size:12px}
+.win-panel{text-align:center}
+
+.toast{position:absolute;left:50%;bottom:22px;transform:translateX(-50%) translateY(8px);padding:9px 18px;border-radius:999px;background:rgba(8,13,24,.92);border:1px solid var(--line);color:#ffe9b8;font-size:13px;opacity:0;pointer-events:none;transition:.25s;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ---------- 触屏 ---------- */
+.touchpad{position:absolute;left:14px;bottom:14px;display:flex;flex-direction:column;align-items:center;gap:6px;opacity:.6}
+.touchpad .row{display:flex;gap:6px}
+.touchpad button{width:46px;height:46px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(10,18,32,.75);color:#cfd8e6;font-size:16px}
+
+@media (hover:hover) and (pointer:fine){.touchpad{display:none!important}}
+
+@media (max-width:640px){
+  .panel{padding:22px 18px}
+  .panel h2{font-size:19px}
+  .rule{font-size:12.5px}
+  .brand-text p{display:none}
+}
