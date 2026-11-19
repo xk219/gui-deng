@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>夜行归灯 · 六点灯火</title>
+<style>
+  @page{margin:0}*{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1440px;height:1080px;overflow:hidden;background:#03060b}
+  canvas{display:block;width:1440px;height:1080px}
+  .grain{position:absolute;inset:0;pointer-events:none;opacity:.05;mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4'/></filter><rect width='220' height='220' filter='url(%23n)' opacity='.8'/></svg>")}
+</style>
+</head>
+<body>
+<canvas id="c" width="2880" height="2160"></canvas>
+<div class="grain"></div>
+<script>
+(() => {
+  const ctx = document.getElementById('c').getContext('2d');
+  const W = 1440, H = 1080;
+  ctx.scale(2, 2);
+  let seed = 7788;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+  // 六根灯芯：一条从近到远的曲折路线
+  const CORES = [
+    [286, 940, 1.00],
+    [470, 884, .90],
+    [660, 900, .80],
+    [830, 812, .74],
+    [1010, 848, .66],
+    [1200, 726, .60]
+  ];
+  const WALKER = { x: 168, y: 946, s: 1.15 };
+  const FLOOR = 1000;
+
+  const flakes = Array.from({length: 190}, () => {
+    const d = rnd() * rnd();
+    return { x: rnd()*W, y: rnd()*H, r: .6 + d*9, a: .06 + rnd()*.38, blur: d*d*5 };
+  });
+
+  const bcv = document.createElement('canvas'); bcv.width = W; bcv.height = H;
+  const bc = bcv.getContext('2d');
+
+  function dot(target, x, y, r, stops) {
+    const g = target.createRadialGradient(x, y, 0, x, y, r);
+    stops.forEach(([p, c]) => g.addColorStop(p, c));
+    target.fillStyle = g; target.beginPath(); target.arc(x, y, r, 0, 6.283); target.fill();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    bc.clearRect(0, 0, W, H);
+
+    /* 夜空 */
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#03060c');
+    bg.addColorStop(.40, '#061120');
+    bg.addColorStop(.74, '#0a1a2a');
+    bg.addColorStop(1, '#050d17');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+
+    // 小月亮
+    ctx.save();
+    dot(bc, 1210, 210, 300, [
+      [0, 'rgba(200,222,255,.16)'],
+      [1, 'rgba(190,214,250,0)']
+    ]);
+    const mo = ctx.createRadialGradient(1200, 200, 6, 1210, 210, 62);
+    mo.addColorStop(0, '#fffdf6');
+    mo.addColorStop(.7, '#eee8d6');
+    mo.addColorStop(1, '#ddd6bf');
+    ctx.fillStyle = mo; ctx.beginPath(); ctx.arc(1210, 210, 62, 0, 6.283); ctx.fill();
+    ctx.restore();
+
+    /* 远山剪影 */
+    ctx.fillStyle = '#081522';
+    ctx.beginPath(); ctx.moveTo(0, H);
+    ctx.lineTo(0, 706); ctx.quadraticCurveTo(220, 640, 430, 700);
+    ctx.quadraticCurveTo(640, 756, 860, 690);
+    ctx.quadraticCurveTo(1090, 624, 1290, 692);
+    ctx.quadraticCurveTo(1380, 720, 1440, 700);
+    ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+
+    /* 雪地 */
+    const gnd = ctx.createLinearGradient(0, 700, 0, H);
+    gnd.addColorStop(0, '#0a1725');
+    gnd.addColorStop(.35, '#0c1c2c');
+    gnd.addColorStop(1, '#060f19');
+    ctx.fillStyle = gnd;
+    ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(0, 712);
+    for (let x = 0; x <= W; x += 16) ctx.lineTo(x, 712 + Math.sin(x / 360) * 26 + Math.sin(x / 130) * 7);
+    ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+
+    /* 每根灯芯：地面上的光斑 */
+    CORES.forEach(([x, y, s], i) => {
+      // 雪面光斑
+      ctx.save();
+      ctx.translate(x, y + 30 * s); ctx.scale(2.2, .46);
+      const pool = ctx.createRadialGradient(0, 0, 2, 0, 0, 86 * s);
+      pool.addColorStop(0, 'rgba(255,204,132,.28)');
+      pool.addColorStop(.5, 'rgba(255,182,98,.12)');
+      pool.addColorStop(1, 'rgba(255,170,86,0)');
+      ctx.fillStyle = pool; ctx.beginPath(); ctx.arc(0, 0, 86 * s, 0, 6.283); ctx.fill();
+      ctx.restore();
+
+      // 光芯
+      dot(bc, x, y, 120 * s, [
+        [0, 'rgba(255,246,214,.55)'],
+        [.28, 'rgba(255,206,132,.20)'],
+        [1, 'rgba(255,190,100,0)']
+      ]);
+    });
+
+    /* 远处的灯座：很淡的一点 */
+    ctx.save();
+    ctx.filter = 'blur(3px)';
+    dot(ctx, 1206, 668, 90, [
+      [0, 'rgba(255,226,168,.30)'],
+      [1, 'rgba(255,200,120,0)']
+    ]);
+    ctx.fillStyle = '#1a2c40';
+    ctx.beginPath(); ctx.roundRect(1204, 640, 5, 30, 2); ctx.fill();
+    ctx.restore();
+
+    /* 行走的人 */
+    drawWalker(WALKER.x, WALKER.y, WALKER.s);
+
+    /* 影子：三团黑 */
+    drawShadowish(600, 800, 1.0);
+    drawShadowish(930, 760, .8);
+    drawShadowish(1290, 812, .66);
+
+    /* 雪 */
+    ctx.save();
+    flakes.forEach(f => {
+      ctx.globalAlpha = f.a;
+      ctx.filter = f.blur > .4 ? `blur(${f.blur.toFixed(1)}px)` : 'none';
+      ctx.fillStyle = '#dfeaf7';
+      ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, 6.283); ctx.fill();
+    });
+    ctx.restore();
+    ctx.filter = 'none'; ctx.globalAlpha = 1;
+
+    /* 辉光合成 */
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.filter = 'blur(22px)';
+    ctx.globalAlpha = .9;
+    ctx.drawImage(bcv, 0, 0, W, H);
+    ctx.restore();
+
+    /* 每个灯芯的实心亮点 */
+    CORES.forEach(([x, y, s]) => {
+      ctx.fillStyle = '#fffdf4';
+      ctx.beginPath(); ctx.arc(x, y, 4.6 * s, 0, 6.283); ctx.fill();
+      ctx.fillStyle = 'rgba(255,240,200,.85)';
+      ctx.beginPath(); ctx.arc(x, y, 8.5 * s, 0, 6.283); ctx.fill();
+      ctx.fillStyle = '#fffdf4';
+      ctx.beginPath(); ctx.arc(x, y, 4.2 * s, 0, 6.283); ctx.fill();
+    });
+
+    /* 调色 */
+    const grade = ctx.createLinearGradient(0, 0, W, H);
+    grade.addColorStop(0, 'rgba(18,48,88,.20)');
+    grade.addColorStop(.6, 'rgba(0,0,0,0)');
+    grade.addColorStop(1, 'rgba(255,168,88,.06)');
+    ctx.globalCompositeOperation = 'soft-light';
+    ctx.fillStyle = grade; ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'source-over';
+
+    const vg = ctx.createRadialGradient(W * .5, H * .5, 320, W * .5, H * .5, 980);
+    vg.addColorStop(0, 'rgba(0,0,0,0)');
+    vg.addColorStop(.7, 'rgba(0,0,0,.28)');
+    vg.addColorStop(1, 'rgba(0,0,0,.66)');
+    ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+
+    drawTitle();
+  }
+
+  function drawWalker(x, feetY, sc) {
+    ctx.save(); ctx.translate(x, feetY); ctx.scale(sc, sc);
+
+    ctx.save(); ctx.filter = 'blur(5px)';
+    ctx.fillStyle = 'rgba(4,10,18,.55)';
+    ctx.beginPath(); ctx.ellipse(0, 2, 40, 7, 0, 0, 6.283); ctx.fill();
+    ctx.restore();
+
+    ctx.fillStyle = '#05090f';
+    ctx.beginPath(); ctx.moveTo(-12, -52); ctx.lineTo(-2, -52); ctx.lineTo(1, -2); ctx.lineTo(-10, -2); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(4, -52); ctx.lineTo(14, -52); ctx.lineTo(20, -2); ctx.lineTo(9, -2); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(-11, -7, 16, 7, 3); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(8, -7, 18, 7, 3); ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(-20, -140);
+    ctx.bezierCurveTo(-31, -104, -31, -68, -26, -46);
+    ctx.quadraticCurveTo(-6, -38, 8, -42);
+    ctx.quadraticCurveTo(24, -38, 28, -46);
+    ctx.bezierCurveTo(31, -78, 30, -108, 18, -140);
+    ctx.quadraticCurveTo(0, -154, -20, -140);
+    ctx.closePath(); ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(-18, -142);
+    ctx.quadraticCurveTo(-22, -174, 0, -182);
+    ctx.quadraticCurveTo(22, -174, 18, -142);
+    ctx.quadraticCurveTo(0, -132, -18, -142);
+    ctx.closePath(); ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(16, -132);
+    ctx.quadraticCurveTo(36, -124, 44, -112);
+    ctx.lineTo(38, -104);
+    ctx.quadraticCurveTo(28, -112, 14, -118);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+
+    // 小提灯
+    const lx = x + 52 * sc, ly = feetY - 104 * sc;
+    const h = ctx.createRadialGradient(lx, ly, 0, lx, ly, 58 * sc);
+    h.addColorStop(0, 'rgba(255,244,208,.95)');
+    h.addColorStop(.35, 'rgba(255,208,134,.42)');
+    h.addColorStop(1, 'rgba(255,190,110,0)');
+    ctx.fillStyle = h; ctx.beginPath(); ctx.arc(lx, ly, 58 * sc, 0, 6.283); ctx.fill();
+    ctx.fillStyle = '#1a1209';
+    ctx.beginPath(); ctx.roundRect(lx - 8 * sc, ly - 10 * sc, 16 * sc, 23 * sc, 5 * sc); ctx.fill();
+    ctx.fillStyle = '#ffefc6';
+    ctx.beginPath(); ctx.roundRect(lx - 5 * sc, ly - 6.5 * sc, 10 * sc, 16 * sc, 3 * sc); ctx.fill();
+  }
+
+  function drawShadowish(x, y, s) {
+    // 地面阴影
+    ctx.save(); ctx.filter = 'blur(9px)';
+    ctx.fillStyle = 'rgba(3,8,14,.7)';
+    ctx.beginPath(); ctx.ellipse(x, y + 6, 46 * s, 11 * s, 0, 0, 6.283); ctx.fill();
+    ctx.restore();
+
+    ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+    ctx.fillStyle = '#04070c';
+    // 袍子：上宽下散
+    ctx.beginPath();
+    ctx.moveTo(-26, -100);
+    ctx.quadraticCurveTo(-36, -60, -28, -20);
+    ctx.quadraticCurveTo(-34, 0, -16, 5);
+    ctx.quadraticCurveTo(2, 8, 18, 4);
+    ctx.quadraticCurveTo(34, -2, 28, -22);
+    ctx.quadraticCurveTo(36, -60, 26, -100);
+    ctx.closePath(); ctx.fill();
+    // 肩
+    ctx.beginPath(); ctx.ellipse(2, -98, 26, 11, .1, 0, 6.283); ctx.fill();
+    // 头
+    ctx.beginPath(); ctx.ellipse(6, -118, 15, 16, .18, 0, 6.283); ctx.fill();
+
+    // 一点点暖边
+    ctx.strokeStyle = 'rgba(255,196,120,.16)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(4, -118, 16, 17, .16, -1, .6); ctx.stroke();
+    ctx.restore();
+
+    // 红眼
+    [[-4, -120], [12, -119]].forEach(([dx, dy]) => {
+      ctx.fillStyle = 'rgba(255,80,56,.95)';
+      ctx.beginPath(); ctx.ellipse(x + dx * s, y + dy * s, 3 * s, 3.8 * s, 0, 0, 6.283); ctx.fill();
+    });
+  }
+
+  function drawTitle() {
+    const chars = ['夜', '行', '归', '灯'];
+    ctx.save();
+    ctx.font = '196px "STXingkai","华文行楷","KaiTi","楷体",serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    chars.forEach((ch, i) => {
+      const x = 196 + (i % 2 ? 6 : -4), y = 186 + i * 200;
+      ctx.save(); ctx.translate(x, y); ctx.rotate((i % 2 ? 1.6 : -1.8) * Math.PI / 180);
+      ctx.shadowColor = 'rgba(255,186,104,.42)'; ctx.shadowBlur = 64;
+      ctx.fillStyle = 'rgba(255,206,140,.20)'; ctx.fillText(ch, 0, 0);
+      ctx.shadowBlur = 22;
+      const g = ctx.createLinearGradient(-56, -100, 56, 100);
+      g.addColorStop(0, '#fffdf3'); g.addColorStop(.42, '#ffeac0');
+      g.addColorStop(.8, '#f2bf74'); g.addColorStop(1, '#dfa055');
+      ctx.fillStyle = g; ctx.fillText(ch, 0, 0);
+      ctx.shadowBlur = 0; ctx.lineWidth = 1.2;
+      ctx.strokeStyle = 'rgba(255,251,236,.42)'; ctx.strokeText(ch, 0, 0);
+      ctx.restore();
+    });
+    ctx.restore();
+  }
+
+  draw();
+})();
+</script>
+</body>
+</html>

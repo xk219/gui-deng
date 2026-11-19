@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>夜行归灯 · 海报</title>
+<style>
+  @page{margin:0}*{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1440px;height:1080px;overflow:hidden;background:#04050c}
+  canvas{display:block;width:1440px;height:1080px}
+  .grain{position:absolute;inset:0;pointer-events:none;opacity:.05;mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4'/></filter><rect width='220' height='220' filter='url(%23n)' opacity='.8'/></svg>")}
+</style>
+</head>
+<body>
+<canvas id="c" width="2880" height="2160"></canvas>
+<div class="grain"></div>
+<script>
+(() => {
+  const ctx = document.getElementById('c').getContext('2d');
+  const W = 1440, H = 1080;
+  ctx.scale(2, 2);
+
+  let seed = 2026;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+  const STARS = Array.from({length: 420}, () => {
+    const r = rnd();
+    return { x: rnd()*W, y: rnd()*(H*0.78), s: .35 + r*r*2.3, a: .12 + rnd()*.6 };
+  });
+  const DUST = Array.from({length: 120}, () => ({
+    x: rnd()*W, y: 300 + rnd()*(H-400), r: .6 + rnd()*2.2, a: .05 + rnd()*.22
+  }));
+
+  const bcv = document.createElement('canvas'); bcv.width = W; bcv.height = H;
+  const bc = bcv.getContext('2d');
+
+  function soft(target, x, y, rx, ry, rot, stops) {
+    target.save();
+    target.translate(x, y); target.rotate(rot); target.scale(1, ry / rx);
+    const g = target.createRadialGradient(0, 0, 0, 0, 0, rx);
+    stops.forEach(([p, c]) => g.addColorStop(p, c));
+    target.fillStyle = g;
+    target.beginPath(); target.arc(0, 0, rx, 0, 6.283); target.fill();
+    target.restore();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    bc.clearRect(0, 0, W, H);
+
+    /* ---------- 天空：藏蓝 → 紫 → 玫瑰 → 暖橙 ---------- */
+    const sky = ctx.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0,   '#05060f');
+    sky.addColorStop(.16, '#0a1028');
+    sky.addColorStop(.34, '#1a1a45');
+    sky.addColorStop(.52, '#3a2358');
+    sky.addColorStop(.68, '#6b3660');
+    sky.addColorStop(.80, '#9a4f5e');
+    sky.addColorStop(.90, '#c4715c');
+    sky.addColorStop(1,   '#d98a63');
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+
+    /* ---------- 极光 / 星云 ---------- */
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    ctx.filter = 'blur(70px)';
+    soft(ctx, 1080, 300, 420, 150, -.24, [
+      [0, 'rgba(84,200,210,.30)'], [1, 'rgba(84,200,210,0)']]);
+    soft(ctx, 340, 380, 480, 170, .18, [
+      [0, 'rgba(120,110,230,.28)'], [1, 'rgba(120,110,230,0)']]);
+    soft(ctx, 760, 520, 520, 190, -.1, [
+      [0, 'rgba(230,120,170,.24)'], [1, 'rgba(230,120,170,0)']]);
+    soft(ctx, 1240, 560, 380, 140, .3, [
+      [0, 'rgba(255,170,110,.26)'], [1, 'rgba(255,170,110,0)']]);
+    ctx.restore();
+
+    /* ---------- 星 ---------- */
+    STARS.forEach(s => {
+      ctx.globalAlpha = s.a;
+      ctx.fillStyle = '#eef4ff';
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.s, 0, 6.283); ctx.fill();
+      if (s.s > 1.9) {
+        ctx.globalAlpha = s.a * .55;
+        ctx.fillRect(s.x - 5, s.y - .35, 10, .7);
+        ctx.fillRect(s.x - .35, s.y - 5, .7, 10);
+      }
+    });
+    ctx.globalAlpha = 1;
+
+    // 亮星在离屏上加柔光
+    STARS.filter(s => s.s > 2).forEach(s => {
+      soft(bc, s.x, s.y, 26, 26, 0, [
+        [0, 'rgba(220,235,255,.35)'], [1, 'rgba(210,230,255,0)']]);
+    });
+
+    /* ---------- 银河流向：一条横贯的亮带 ---------- */
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    ctx.filter = 'blur(38px)';
+    soft(ctx, 700, 430, 900, 90, -.28, [
+      [0, 'rgba(190,205,255,.12)'],
+      [.5, 'rgba(170,190,245,.06)'],
+      [1, 'rgba(160,180,240,0)']]);
+    ctx.restore();
+
+    /* ---------- 远山（两层，暖边） ---------- */
+    const smoothRidge = (pts, fill, blur) => {
+      ctx.save();
+      if (blur) ctx.filter = `blur(${blur}px)`;
+      ctx.beginPath();
+      ctx.moveTo(-60, H);
+      ctx.lineTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length - 1; i++) {
+        const xc = (pts[i][0] + pts[i + 1][0]) / 2;
+        const yc = (pts[i][1] + pts[i + 1][1]) / 2;
+        ctx.quadraticCurveTo(pts[i][0], pts[i][1], xc, yc);
+      }
+      ctx.lineTo(W + 60, pts[pts.length - 1][1]);
+      ctx.lineTo(W + 60, H); ctx.closePath();
+      ctx.fillStyle = fill; ctx.fill();
+      ctx.restore();
+    };
+
+    smoothRidge([[0,742],[210,676],[430,730],[660,660],[880,722],[1100,652],[1300,712],[1440,676]], 'rgba(52,34,62,.62)', 6);
+    smoothRidge([[0,806],[250,742],[500,792],[740,726],[980,784],[1200,726],[1440,768]], '#1b1328', 2);
+
+    // 山间雾
+    ctx.save();
+    ctx.filter = 'blur(30px)';
+    soft(ctx, 620, 792, 720, 70, 0, [
+      [0, 'rgba(190,150,190,.14)'], [1, 'rgba(190,150,190,0)']]);
+    ctx.restore();
+
+    // 山脊暖边
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    ctx.filter = 'blur(1.5px)';
+    ctx.strokeStyle = 'rgba(255,186,130,.35)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0,806); ctx.quadraticCurveTo(250,742,500,792);
+    ctx.quadraticCurveTo(740,726,980,784);
+    ctx.quadraticCurveTo(1200,726,1440,768);
+    ctx.stroke();
+    ctx.restore();
+
+    // 远山上的一盏孤灯
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    ctx.filter = 'blur(14px)';
+    const lamp = ctx.createRadialGradient(1188, 726, 0, 1188, 726, 90);
+    lamp.addColorStop(0, 'rgba(255,214,150,.55)');
+    lamp.addColorStop(.35, 'rgba(255,190,110,.18)');
+    lamp.addColorStop(1, 'rgba(255,180,100,0)');
+    ctx.fillStyle = lamp; ctx.beginPath(); ctx.arc(1188, 726, 90, 0, 6.283); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = 'rgba(255,244,214,.95)';
+    ctx.beginPath(); ctx.arc(1188, 726, 3.4, 0, 6.283); ctx.fill();
+
+    /* ---------- 前景雾 ---------- */
+    ctx.save();
+    ctx.filter = 'blur(46px)';
+    soft(ctx, 420, 900, 700, 120, 0, [
+      [0, 'rgba(255,180,140,.14)'], [1, 'rgba(255,170,130,0)']]);
+    soft(ctx, 1080, 950, 620, 110, 0, [
+      [0, 'rgba(255,196,150,.12)'], [1, 'rgba(255,180,140,0)']]);
+    ctx.restore();
+
+    // 地面
+    const gnd = ctx.createLinearGradient(0, 900, 0, H);
+    gnd.addColorStop(0, 'rgba(40,24,48,0)');
+    gnd.addColorStop(.5, 'rgba(30,18,38,.55)');
+    gnd.addColorStop(1, 'rgba(14,8,20,.92)');
+    ctx.fillStyle = gnd; ctx.fillRect(0, 860, W, H - 860);
+
+    /* ---------- 漂浮微粒 ---------- */
+    DUST.forEach(d => {
+      ctx.globalAlpha = d.a;
+      ctx.fillStyle = '#ffe9c8';
+      ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, 6.283); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+    /* ---------- 辉光合成 ---------- */
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.filter = 'blur(30px)';
+    ctx.globalAlpha = .8;
+    ctx.drawImage(bcv, 0, 0, W, H);
+    ctx.restore();
+
+    /* ---------- 调色 ---------- */
+    const grade = ctx.createLinearGradient(0, 0, W, H);
+    grade.addColorStop(0, 'rgba(80,120,255,.10)');
+    grade.addColorStop(.55, 'rgba(0,0,0,0)');
+    grade.addColorStop(1, 'rgba(255,150,90,.10)');
+    ctx.globalCompositeOperation = 'soft-light';
+    ctx.fillStyle = grade; ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'source-over';
+
+    const vg = ctx.createRadialGradient(W * .5, H * .44, 340, W * .5, H * .5, 1020);
+    vg.addColorStop(0, 'rgba(0,0,0,0)');
+    vg.addColorStop(.68, 'rgba(0,0,0,.22)');
+    vg.addColorStop(1, 'rgba(0,0,0,.62)');
+    ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+
+    drawTitle();
+  }
+
+  /* ---------- 标题：横排，居中偏上 ---------- */
+  function drawTitle() {
+    const text = '夜行归灯';
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '190px "STXingkai","华文行楷","KaiTi","楷体",serif';
+
+    const cx = W / 2, cy = 300;
+
+    // 背后的柔光
+    ctx.save();
+    ctx.filter = 'blur(50px)';
+    const gl = ctx.createRadialGradient(cx, cy, 20, cx, cy, 430);
+    gl.addColorStop(0, 'rgba(255,226,180,.22)');
+    gl.addColorStop(1, 'rgba(255,210,160,0)');
+    ctx.fillStyle = gl;
+    ctx.beginPath(); ctx.arc(cx, cy, 430, 0, 6.283); ctx.fill();
+    ctx.restore();
+
+    // 外发光
+    ctx.shadowColor = 'rgba(255,214,160,.55)';
+    ctx.shadowBlur = 46;
+    ctx.fillStyle = 'rgba(255,236,205,.55)';
+    ctx.fillText(text, cx, cy);
+
+    // 主体
+    ctx.shadowBlur = 18;
+    const g = ctx.createLinearGradient(0, cy - 110, 0, cy + 110);
+    g.addColorStop(0, '#ffffff');
+    g.addColorStop(.45, '#fff6e6');
+    g.addColorStop(.8, '#ffdfb4');
+    g.addColorStop(1, '#f3c193');
+    ctx.fillStyle = g;
+    ctx.fillText(text, cx, cy);
+    ctx.restore();
+  }
+
+  draw();
+})();
+</script>
+</body>
+</html>
