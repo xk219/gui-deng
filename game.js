@@ -13,6 +13,7 @@
   const DEPOSIT_PER_GO = 3;   // 灯座一次最多接收
   const COOLDOWN = 6;         // 秒
   const PLAYER_SPEED = 212;
+  const ZOOM = 1.28;
 
   const CORE_SPOTS = [
     { x: 250, y: 250 }, { x: 1520, y: 300 }, { x: 300, y: 1060 },
@@ -139,7 +140,7 @@
   }
 
   // ---------------- 规则数值 ----------------
-  const lightRadius = () => 196 + S.carried * 50;
+  const lightRadius = () => 224 + S.carried * 50;
   const aggroRadius = () => (S.carried > 0 ? 150 + S.carried * 82 : 0);
   const shadowSpeed = () => 64 + S.carried * 25;
 
@@ -261,8 +262,9 @@
     if (S.shake > 0) S.shake = Math.max(0, S.shake - dt * 2.4);
 
     // 摄像机
-    const tx = clamp(p.x - VW / 2, 0, Math.max(0, WORLD.w - VW));
-    const ty = clamp(p.y - VH / 2, 0, Math.max(0, WORLD.h - VH));
+    const vw = VW / ZOOM, vh = VH / ZOOM;
+    const tx = clamp(p.x - vw / 2, 0, Math.max(0, WORLD.w - vw));
+    const ty = clamp(p.y - vh / 2, 0, Math.max(0, WORLD.h - vh));
     S.cam.x += (tx - S.cam.x) * Math.min(1, dt * 6);
     S.cam.y += (ty - S.cam.y) * Math.min(1, dt * 6);
   }
@@ -321,6 +323,7 @@
     ctx.fillStyle = g; ctx.fillRect(0, 0, VW, VH);
 
     ctx.save();
+    ctx.scale(ZOOM, ZOOM);
     ctx.translate(-S.cam.x + shakeX, -S.cam.y + shakeY);
 
     drawSnowfield();
@@ -343,7 +346,7 @@
   }
 
   function drawSnowfield() {
-    ctx.fillStyle = '#0e1b2e';
+    ctx.fillStyle = '#16283f';
     ctx.fillRect(0, 0, WORLD.w, WORLD.h);
     // 雪面纹理
     ctx.save();
@@ -427,20 +430,28 @@
     if (s.mode === 'chase') a = Math.max(a, .55);
     if (a <= 0.02) return;
     ctx.save();
-    ctx.globalAlpha = 0.35 + a * 0.6;
+    ctx.globalAlpha = 0.72 + a * 0.28;
     // 身体
     const wob = Math.sin(S.t * 3 + s.wob) * 4;
+    // 地面暗影
+    ctx.globalAlpha *= 0.35;
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.ellipse(s.x, s.y + 18, 22, 6, 0, 0, 6.283); ctx.fill();
+    ctx.globalAlpha = 0.72 + a * 0.28;
     ctx.beginPath();
-    ctx.ellipse(s.x, s.y + 6 + wob, 20, 15, 0, 0, 6.283);
-    ctx.fillStyle = '#04060c'; ctx.fill();
+    ctx.ellipse(s.x, s.y + 8 + wob, 19, 20, 0, 0, 6.283);
+    ctx.fillStyle = '#05080e'; ctx.fill();
     ctx.beginPath();
-    ctx.arc(s.x, s.y - 6 + wob * .5, 13, 0, 6.283);
-    ctx.fillStyle = '#04060c'; ctx.fill();
+    ctx.arc(s.x, s.y - 11 + wob * .5, 12, 0, 6.283);
+    ctx.fillStyle = '#05080e'; ctx.fill();
+    // 被灯照到的暖边
+    ctx.strokeStyle = 'rgba(255,200,120,.28)'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(s.x, s.y - 11 + wob * .5, 12, -1.1, .5); ctx.stroke();
     // 眼睛
     const eyeA = s.mode === 'chase' ? 1 : .35 + s.eye * .5;
     ctx.fillStyle = s.mode === 'chase' ? 'rgba(255,110,90,.95)' : 'rgba(150,175,205,.55)';
-    ctx.beginPath(); ctx.arc(s.x - 5, s.y - 7 + wob * .5, 2.2 * eyeA, 0, 6.283); ctx.fill();
-    ctx.beginPath(); ctx.arc(s.x + 5, s.y - 7 + wob * .5, 2.2 * eyeA, 0, 6.283); ctx.fill();
+    ctx.beginPath(); ctx.arc(s.x - 4.5, s.y - 12 + wob * .5, 2.6 * eyeA, 0, 6.283); ctx.fill();
+    ctx.beginPath(); ctx.arc(s.x + 4.5, s.y - 12 + wob * .5, 2.6 * eyeA, 0, 6.283); ctx.fill();
     ctx.restore();
   }
 
@@ -525,18 +536,18 @@
 
   function drawLightMask() {
     const p = S.player;
-    const sx = p.x - S.cam.x, sy = p.y - S.cam.y;
+    const sx = (p.x - S.cam.x) * ZOOM, sy = (p.y - S.cam.y) * ZOOM;
     const r = lightRadius();
     const g = ctx.createRadialGradient(sx, sy, r * .28, sx, sy, r);
     g.addColorStop(0, 'rgba(3,6,12,0)');
-    g.addColorStop(.55, 'rgba(3,6,12,.30)');
-    g.addColorStop(.85, 'rgba(3,6,12,.80)');
-    g.addColorStop(1, 'rgba(2,4,9,.90)');
+    g.addColorStop(.50, 'rgba(3,6,12,.16)');
+    g.addColorStop(.80, 'rgba(3,6,12,.66)');
+    g.addColorStop(1, 'rgba(2,4,9,.86)');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, VW, VH);
 
     // 灯座自身的光
-    const ax = ALTAR.x - S.cam.x, ay = ALTAR.y - S.cam.y;
+    const ax = (ALTAR.x - S.cam.x) * ZOOM, ay = (ALTAR.y - S.cam.y) * ZOOM;
     const ar = 240 + S.pulse * 60;
     const ag = ctx.createRadialGradient(ax, ay, 10, ax, ay, ar);
     ag.addColorStop(0, `rgba(255,207,107,${.16 + (S.pulse > 0 ? .18 : 0)})`);
@@ -556,7 +567,7 @@
     let best = null, bd = 1e9;
     for (const c of S.cores) if (!c.taken) { const d = dist(c, S.player); if (d < bd) { bd = d; best = c; } }
     if (!best) return;
-    const sx = best.x - S.cam.x, sy = best.y - S.cam.y;
+    const sx = (best.x - S.cam.x) * ZOOM, sy = (best.y - S.cam.y) * ZOOM;
     if (sx > 20 && sx < VW - 20 && sy > 20 && sy < VH - 20) return;
     const ang = Math.atan2(best.y - S.player.y, best.x - S.player.x);
     const cx = VW / 2 + Math.cos(ang) * (VW / 2 - 34);
