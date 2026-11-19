@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>夜行归灯 · 海报</title>
+<style>
+  @page{margin:0}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1440px;height:1080px;overflow:hidden;background:#04070c}
+  .poster{position:relative;width:1440px;height:1080px;overflow:hidden}
+  canvas{display:block;width:1440px;height:1080px}
+  .grain{position:absolute;inset:0;pointer-events:none;opacity:.055;mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3'/></filter><rect width='200' height='200' filter='url(%23n)' opacity='.75'/></svg>")}
+</style>
+</head>
+<body>
+<div class="poster">
+  <canvas id="c" width="2880" height="2160"></canvas>
+  <div class="grain"></div>
+</div>
+<script>
+(() => {
+  const el = document.getElementById('c');
+  const ctx = el.getContext('2d');
+  const W = 1440, H = 1080;
+  ctx.scale(2, 2);
+
+  let seed = 99117;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+  // 离屏：辉光
+  const bc = document.createElement('canvas');
+  bc.width = 1440; bc.height = 1080;
+  const b = bc.getContext('2d');
+
+  const LANTERN = { x: 596, y: 704 };
+
+  const flakes = Array.from({length: 240}, () => {
+    const depth = rnd();                     // 0 = 远，1 = 近
+    return {
+      x: rnd()*W, y: rnd()*H,
+      r: .6 + depth*depth*13,
+      a: .10 + rnd()*.50,
+      blur: depth*depth*6,
+      depth
+    };
+  });
+
+  const bokeh = Array.from({length: 14}, () => ({
+    x: rnd()*W, y: 120 + rnd()*(H-160),
+    r: 26 + rnd()*70, a: .03 + rnd()*.06
+  }));
+
+  function glowOn(target, x, y, r, rgb, a) {
+    const g = target.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, `rgba(${rgb},${a})`);
+    g.addColorStop(.42, `rgba(${rgb},${a*.32})`);
+    g.addColorStop(1, `rgba(${rgb},0)`);
+    target.fillStyle = g;
+    target.beginPath(); target.arc(x, y, r, 0, 6.283); target.fill();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    b.clearRect(0, 0, W, H);
+
+    /* ---------- 夜 ---------- */
+    const sky = ctx.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, '#04070e');
+    sky.addColorStop(.42, '#071220');
+    sky.addColorStop(.72, '#0b1c2e');
+    sky.addColorStop(1, '#0a1622');
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+
+    // 远处的一点冷光
+    glowOn(ctx, 1180, 250, 620, '150,190,235', .05);
+
+    /* ---------- 雾 ---------- */
+    ctx.save();
+    ctx.filter = 'blur(40px)';
+    [[300, 720, 520, .10], [900, 800, 620, .07], [1220, 640, 420, .05]].forEach(([x, y, r, a]) => {
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, `rgba(120,165,215,${a})`);
+      g.addColorStop(1, 'rgba(120,165,215,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.fill();
+    });
+    ctx.restore();
+
+    /* ---------- 雪地（很轻，只做承托） ---------- */
+    const gnd = ctx.createLinearGradient(0, 780, 0, H);
+    gnd.addColorStop(0, 'rgba(150,182,215,0)');
+    gnd.addColorStop(.35, 'rgba(126,158,192,.10)');
+    gnd.addColorStop(1, 'rgba(96,128,164,.18)');
+    ctx.fillStyle = gnd; ctx.fillRect(0, 760, W, H - 760);
+
+    /* ---------- 雪脊 ---------- */
+    ctx.save();
+    ctx.filter = 'blur(26px)';
+    const ridgeG = ctx.createLinearGradient(0, 800, 0, H);
+    ridgeG.addColorStop(0, 'rgba(150,186,220,.16)');
+    ridgeG.addColorStop(.55, 'rgba(96,128,162,.30)');
+    ridgeG.addColorStop(1, 'rgba(40,62,90,.42)');
+    ctx.fillStyle = ridgeG;
+    ctx.beginPath();
+    ctx.moveTo(-40, H);
+    ctx.lineTo(-40, 852);
+    for (let x = -40; x <= W + 40; x += 14) {
+      ctx.lineTo(x, 852 + Math.sin(x / 300) * 26 + Math.sin(x / 110) * 8);
+    }
+    ctx.lineTo(W + 40, H); ctx.closePath(); ctx.fill();
+    ctx.restore();
+
+    /* ---------- 提灯周围的大光 ---------- */
+    glowOn(b, LANTERN.x, LANTERN.y + 26, 460, '255,196,110', .34);
+    glowOn(b, LANTERN.x, LANTERN.y + 26, 170, '255,224,168', .55);
+    glowOn(b, LANTERN.x, LANTERN.y + 26, 60, '255,248,224', .85);
+
+    // 雪地上的光池
+    ctx.save();
+    ctx.filter = 'blur(18px)';
+    ctx.translate(LANTERN.x + 10, 862); ctx.scale(1.75, .34);
+    const pool = ctx.createRadialGradient(0, 0, 10, 0, 0, 300);
+    pool.addColorStop(0, 'rgba(255,222,158,.50)');
+    pool.addColorStop(.35, 'rgba(255,198,120,.22)');
+    pool.addColorStop(1, 'rgba(255,180,90,0)');
+    ctx.fillStyle = pool; ctx.beginPath(); ctx.arc(0, 0, 300, 0, 6.283); ctx.fill();
+    ctx.restore();
+
+    // 光柱（极淡）
+    ctx.save();
+    ctx.filter = 'blur(26px)';
+    const beam = ctx.createLinearGradient(LANTERN.x, LANTERN.y, LANTERN.x + 40, LANTERN.y + 420);
+    beam.addColorStop(0, 'rgba(255,214,150,.13)');
+    beam.addColorStop(1, 'rgba(255,200,120,0)');
+    ctx.fillStyle = beam;
+    ctx.beginPath();
+    ctx.moveTo(LANTERN.x - 26, LANTERN.y + 10);
+    ctx.lineTo(LANTERN.x + 30, LANTERN.y + 10);
+    ctx.lineTo(LANTERN.x + 120, LANTERN.y + 430);
+    ctx.lineTo(LANTERN.x - 110, LANTERN.y + 430);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+
+    /* ---------- 人物（几乎隐在暗处） ---------- */
+    drawFigure(452, 836);
+
+    /* ---------- 提灯本体 ---------- */
+    drawLantern(LANTERN.x, LANTERN.y);
+
+    /* ---------- 远处的影子：只有眼睛 ---------- */
+    drawFarEyes(1010, 690);
+    drawFarEyes(1186, 742);
+    drawFarEyes(1330, 664);
+
+    /* ---------- 雪 ---------- */
+    ctx.save();
+    flakes.forEach(f => {
+      const d = Math.hypot(f.x - LANTERN.x, f.y - LANTERN.y);
+      const lit = Math.max(0, 1 - d / 520);
+      ctx.globalAlpha = Math.min(.9, f.a + lit * .5);
+      ctx.filter = f.blur > .5 ? `blur(${f.blur.toFixed(1)}px)` : 'none';
+      ctx.fillStyle = lit > .25 ? '#fff3d6' : '#dceaf9';
+      ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, 6.283); ctx.fill();
+    });
+    ctx.restore();
+    ctx.filter = 'none';
+    ctx.globalAlpha = 1;
+
+    // 焦外光斑
+    bokeh.forEach(o => {
+      ctx.save();
+      ctx.filter = `blur(${(o.r * .18).toFixed(1)}px)`;
+      const g = ctx.createRadialGradient(o.x, o.y, o.r * .2, o.x, o.y, o.r);
+      g.addColorStop(0, `rgba(255,224,170,${o.a})`);
+      g.addColorStop(.72, `rgba(255,206,132,${o.a * .8})`);
+      g.addColorStop(1, 'rgba(255,196,120,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(o.x, o.y, o.r, 0, 6.283); ctx.fill();
+      ctx.restore();
+    });
+
+    /* ---------- 辉光合成 ---------- */
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.filter = 'blur(30px)';
+    ctx.globalAlpha = .9;
+    ctx.drawImage(bc, 0, 0, W, H);
+    ctx.restore();
+
+    /* ---------- 调色 ---------- */
+    const grade = ctx.createLinearGradient(0, 0, W, H);
+    grade.addColorStop(0, 'rgba(26,64,110,.20)');
+    grade.addColorStop(.52, 'rgba(0,0,0,0)');
+    grade.addColorStop(1, 'rgba(255,168,90,.10)');
+    ctx.globalCompositeOperation = 'soft-light';
+    ctx.fillStyle = grade; ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = 'source-over';
+
+    const vg = ctx.createRadialGradient(W * .42, H * .52, 260, W * .5, H * .5, 980);
+    vg.addColorStop(0, 'rgba(0,0,0,0)');
+    vg.addColorStop(.62, 'rgba(0,0,0,.30)');
+    vg.addColorStop(1, 'rgba(0,0,0,.78)');
+    ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+
+    // 标题区
+    const tg = ctx.createLinearGradient(0, 0, 900, 520);
+    tg.addColorStop(0, 'rgba(3,6,12,.55)');
+    tg.addColorStop(1, 'rgba(3,6,12,0)');
+    ctx.fillStyle = tg; ctx.fillRect(0, 0, 980, 620);
+
+    drawTitle();
+  }
+
+  /* ---------- 标题 ---------- */
+  function drawTitle() {
+    const text = '夜行归灯';
+    ctx.save();
+    ctx.textBaseline = 'top';
+    ctx.font = '196px "STXingkai","华文行楷","KaiTi","楷体",serif';
+    ctx.shadowColor = 'rgba(255,180,96,.5)';
+    ctx.shadowBlur = 60;
+    ctx.fillStyle = 'rgba(255,206,140,.30)';
+    ctx.fillText(text, 84, 92);
+
+    ctx.shadowBlur = 22;
+    const g = ctx.createLinearGradient(0, 110, 0, 320);
+    g.addColorStop(0, '#fffdf4');
+    g.addColorStop(.4, '#ffeac0');
+    g.addColorStop(.78, '#f4c47c');
+    g.addColorStop(1, '#e2a458');
+    ctx.fillStyle = g;
+    ctx.fillText(text, 84, 88);
+
+    ctx.shadowBlur = 0;
+    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = 'rgba(255,251,236,.5)';
+    ctx.strokeText(text, 84, 88);
+    ctx.restore();
+  }
+
+  /* ---------- 人物（背光剪影） ---------- */
+  function drawFigure(x, feetY) {
+    const h = 322;
+    const top = feetY - h;
+    ctx.save();
+    ctx.globalAlpha = .96;
+
+    // 腿
+    ctx.fillStyle = '#050a11';
+    ctx.beginPath();
+    ctx.moveTo(x - 30, feetY - 118); ctx.lineTo(x - 8, feetY - 118);
+    ctx.lineTo(x - 6, feetY - 18); ctx.lineTo(x - 30, feetY - 18); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x + 8, feetY - 118); ctx.lineTo(x + 30, feetY - 118);
+    ctx.lineTo(x + 34, feetY - 18); ctx.lineTo(x + 10, feetY - 18); ctx.closePath(); ctx.fill();
+    // 靴
+    ctx.beginPath(); ctx.roundRect(x - 36, feetY - 22, 33, 22, 7); ctx.fill();
+    ctx.beginPath(); ctx.roundRect(x + 6, feetY - 22, 34, 22, 7); ctx.fill();
+
+    // 外套（到膝盖）
+    ctx.beginPath();
+    ctx.moveTo(x - 52, top + 52);
+    ctx.bezierCurveTo(x - 78, top + 140, x - 80, feetY - 178, x - 70, feetY - 104);
+    ctx.quadraticCurveTo(x - 34, feetY - 88, x + 2, feetY - 96);
+    ctx.quadraticCurveTo(x + 40, feetY - 88, x + 70, feetY - 104);
+    ctx.bezierCurveTo(x + 80, feetY - 178, x + 76, top + 140, x + 50, top + 52);
+    ctx.quadraticCurveTo(x, top + 28, x - 52, top + 52);
+    ctx.closePath(); ctx.fill();
+
+    // 兜帽（窄一些，带尖）
+    ctx.beginPath();
+    ctx.moveTo(x - 44, top + 56);
+    ctx.quadraticCurveTo(x - 50, top - 16, x - 4, top - 34);
+    ctx.quadraticCurveTo(x + 44, top - 16, x + 42, top + 56);
+    ctx.quadraticCurveTo(x, top + 76, x - 44, top + 56);
+    ctx.closePath(); ctx.fill();
+
+    // 手臂
+    ctx.beginPath();
+    ctx.moveTo(x + 40, top + 80);
+    ctx.quadraticCurveTo(x + 96, top + 96, x + 142, top + 128);
+    ctx.quadraticCurveTo(x + 124, top + 146, x + 108, top + 152);
+    ctx.quadraticCurveTo(x + 104, top + 138, x + 92, top + 116);
+    ctx.quadraticCurveTo(x + 56, top + 100, x + 34, top + 96);
+    ctx.closePath(); ctx.fill();
+
+    ctx.restore();
+
+    // 脚下雪影
+    ctx.save();
+    ctx.filter = 'blur(10px)';
+    ctx.fillStyle = 'rgba(6,14,24,.55)';
+    ctx.beginPath(); ctx.ellipse(x + 6, feetY + 4, 80, 14, 0, 0, 6.283); ctx.fill();
+    ctx.restore();
+
+    // 暖轮廓
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,204,138,.55)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(x + 2, top + 8, 40, -1.15, -.15);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x + 44, top + 100); ctx.quadraticCurveTo(x + 100, top + 112, x + 138, top + 142);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /* ---------- 提灯 ---------- */
+  function drawLantern(x, y) {
+    // 提环
+    ctx.strokeStyle = 'rgba(48,36,22,.9)'; ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(x, y - 56, 20, Math.PI * 1.15, Math.PI * 1.85);
+    ctx.stroke();
+
+    // 灯体
+    const body = ctx.createLinearGradient(x - 34, y - 40, x + 34, y + 62);
+    body.addColorStop(0, '#33261a');
+    body.addColorStop(.5, '#171009');
+    body.addColorStop(1, '#3a2b1b');
+    ctx.fillStyle = body;
+    ctx.beginPath(); ctx.roundRect(x - 32, y - 38, 64, 104, 13); ctx.fill();
+
+    // 玻璃
+    const glass = ctx.createLinearGradient(x, y - 28, x, y + 56);
+    glass.addColorStop(0, 'rgba(255,250,230,1)');
+    glass.addColorStop(.4, 'rgba(255,226,164,.98)');
+    glass.addColorStop(.8, 'rgba(255,190,102,.95)');
+    glass.addColorStop(1, 'rgba(238,148,64,.95)');
+    ctx.fillStyle = glass;
+    ctx.beginPath(); ctx.roundRect(x - 21, y - 28, 42, 76, 8); ctx.fill();
+
+    // 火焰
+    const fl = ctx.createRadialGradient(x, y + 18, 0, x, y + 18, 40);
+    fl.addColorStop(0, 'rgba(255,255,252,1)');
+    fl.addColorStop(.28, 'rgba(255,242,198,.98)');
+    fl.addColorStop(1, 'rgba(255,178,78,0)');
+    ctx.fillStyle = fl;
+    ctx.beginPath(); ctx.ellipse(x, y + 18, 22, 32, 0, 0, 6.283); ctx.fill();
+    ctx.fillStyle = '#fffefa';
+    ctx.beginPath(); ctx.ellipse(x, y + 20, 6, 12, 0, 0, 6.283); ctx.fill();
+
+    // 提梁与护网
+    ctx.strokeStyle = 'rgba(60,44,26,.95)'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x - 32, y - 30); ctx.lineTo(x + 32, y - 30); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - 32, y + 62); ctx.lineTo(x + 32, y + 62); ctx.stroke();
+    ctx.lineWidth = 2;
+    [-14, 0, 14].forEach(dx => {
+      ctx.beginPath(); ctx.moveTo(x + dx, y - 30); ctx.lineTo(x + dx, y + 62); ctx.stroke();
+    });
+
+    // 顶盖
+    ctx.fillStyle = '#221809';
+    ctx.beginPath(); ctx.roundRect(x - 36, y - 46, 72, 12, 4); ctx.fill();
+  }
+
+  /* ---------- 远处的红眼 ---------- */
+  function drawFarEyes(x, y) {
+    // 淡影子轮廓
+    ctx.save();
+    ctx.globalAlpha = .55;
+    ctx.fillStyle = '#03060b';
+    ctx.beginPath();
+    ctx.moveTo(x - 26, y + 62); ctx.quadraticCurveTo(x - 34, y + 4, x - 12, y - 14);
+    ctx.quadraticCurveTo(x + 10, y - 30, x + 26, y - 12);
+    ctx.quadraticCurveTo(x + 38, y + 8, x + 28, y + 62);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.filter = 'blur(1.2px)';
+    // 一团更暗的影子
+    const g = ctx.createRadialGradient(x, y, 4, x, y, 90);
+    g.addColorStop(0, 'rgba(2,4,8,.85)');
+    g.addColorStop(1, 'rgba(2,4,8,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y, 90, 0, 6.283); ctx.fill();
+    ctx.restore();
+
+    glowOn(ctx, x - 9, y - 2, 26, '255,80,54', .22);
+    glowOn(ctx, x + 9, y - 2, 26, '255,80,54', .22);
+    ctx.fillStyle = 'rgba(255,84,58,.95)';
+    ctx.beginPath(); ctx.ellipse(x - 9, y - 2, 4.2, 5.4, -.16, 0, 6.283); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(x + 9, y - 2, 4.2, 5.4, .16, 0, 6.283); ctx.fill();
+  }
+
+  draw();
+})();
+</script>
+</body>
+</html>
