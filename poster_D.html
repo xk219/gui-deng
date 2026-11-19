@@ -149,11 +149,11 @@
     ctx.restore();
 
     /* ---------- 小剪影：走向光 ---------- */
-    drawWalker(690, FLOOR + 8, 1.12);
+    drawWalker(930, FLOOR + 10, 1.5);
 
     /* ---------- 暗处的眼睛 ---------- */
-    drawEyes(470, 946, .85);
-    drawEyes(1258, 916, .72);
+    drawEyes(392, 962, .9);
+    drawEyes(1246, 940, .75);
 
     /* ---------- 雪 ---------- */
     ctx.save();
@@ -250,6 +250,23 @@
     ctx.lineTo(42, -110);
     ctx.quadraticCurveTo(32, -118, 16, -124);
     ctx.closePath(); ctx.fill();
+
+    // 逆光轮廓
+    ctx.save();
+    ctx.translate(x, feetY);
+    ctx.scale(sc, sc);
+    ctx.strokeStyle = 'rgba(255,246,214,1)';
+    ctx.lineWidth = 3.2;
+    ctx.lineCap = 'round';
+    // 兜帽
+    ctx.beginPath(); ctx.moveTo(-19, -164); ctx.quadraticCurveTo(-4, -196, 14, -166); ctx.stroke();
+    // 身体两侧
+    ctx.beginPath(); ctx.moveTo(-26, -142); ctx.quadraticCurveTo(-34, -110, -29, -64); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(24, -144); ctx.quadraticCurveTo(31, -110, 28, -66); ctx.stroke();
+    // 腿
+    ctx.beginPath(); ctx.moveTo(-9, -52); ctx.lineTo(-8, -10); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(9, -52); ctx.lineTo(14, -10); ctx.stroke();
+    ctx.restore();
 
     ctx.restore();
 
